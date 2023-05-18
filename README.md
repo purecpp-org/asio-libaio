@@ -12,6 +12,19 @@ Building asio-libaio
 --------------------
 libaio must be install first. 
 
+ubuntu
+
+```shell
+sudo apt install libaio-dev -y
+```
+
+centos
+
+```shell
+# Install libaio
+sudo yum install libaio-devel -y
+```
+
 ```
 $ ./autogen.sh
 ```
