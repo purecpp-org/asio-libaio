@@ -55,7 +55,7 @@ asio::error_code lib_aio_file_service::open(
   }
 
   descriptor_ops::state_type state = 0;
-  int fd = descriptor_ops::open(path, static_cast<int>(open_flags | file_base::flags::direct) , 0777, ec);
+  int fd = descriptor_ops::open(path, open_flags, 0777, ec);
   if(fd < 0)
   {
     ASIO_ERROR_LOCATION(ec);
