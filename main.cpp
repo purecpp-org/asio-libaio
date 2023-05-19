@@ -1,5 +1,7 @@
+#include "asio/error_code.hpp"
 #include <aio.h>
 #include <asio/io_context.hpp>
+#include <asio/random_access_file.hpp>
 #include <asio/stream_file.hpp>
 #include <fcntl.h>
 #include <iostream>
@@ -152,9 +154,39 @@ void un_direct() {
   }
 }
 
+void offset_visit() {
+  asio::io_context ioc;
+  try {
+    stream_file ss_file(ioc, "/tmp/test.txt",
+                        stream_file::write_only | stream_file::create);
+    std::string str = "it is a test for random";
+    ss_file.write_some(buffer(str.data(), str.size()));
+    ss_file.close();
+
+    random_access_file file(ioc.get_executor(), "/tmp/test.txt",
+                            stream_file::read_write | stream_file::create);
+
+    char buf[6];
+    file.async_read_some_at(
+        5, buffer(buf, 6), [&file](asio::error_code ec, size_t size) {
+          std::cout << "read " << size << "\n";
+          char buf[6]{};
+          file.async_read_some_at(5, buffer(buf),
+                                  [buf](error_code ec, size_t size) {
+                                    std::cout << "write " << size << "\n";
+                                  });
+        });
+
+    ioc.run();
+  } catch (std::exception &e) {
+    std::cout << e.what() << "\n";
+  }
+}
+
 int main(int, char **) {
   test_aio();
   test_async_write();
   test_async_read();
   un_direct();
+  offset_visit();
 }
