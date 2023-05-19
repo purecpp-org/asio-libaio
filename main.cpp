@@ -72,7 +72,8 @@ void test_aio() {
 void test_async_read() {
   asio::io_context ioc;
   try {
-    stream_file file(ioc, "/tmp/test.txt", stream_file::read_only);
+    stream_file file(ioc, "/tmp/test.txt",
+                     stream_file::read_only | stream_file::direct);
     void *data = nullptr;
     int r = posix_memalign(&data, 512, 4096);
     if (r) {
@@ -95,7 +96,8 @@ void test_async_read() {
 void test_async_write() {
   asio::io_context ioc;
   try {
-    stream_file file(ioc, "/tmp/test.txt", stream_file::write_only);
+    stream_file file(ioc, "/tmp/test.txt",
+                     stream_file::write_only | stream_file::direct);
     void *data = nullptr;
     int r = posix_memalign(&data, 512, 4096);
     if (r) {
@@ -118,8 +120,41 @@ void test_async_write() {
   }
 }
 
+void un_direct() {
+  asio::io_context ioc;
+  try {
+    stream_file file(ioc, "/tmp/test.txt",
+                     stream_file::write_only | stream_file::direct |
+                         stream_file::create);
+    void *data = nullptr;
+    int r = posix_memalign(&data, 512, 4096);
+    if (r) {
+      fprintf(stderr, "posix_memalign failed: %s\n", strerror(r));
+      return;
+    }
+
+    std::string str = "it is a test";
+    strcpy((char *)data, str.data());
+
+    file.async_write_some(buffer(data, 512),
+                          [data](asio::error_code ec, size_t size) {
+                            std::cout << ec.message() << " " << size << "\n";
+                          });
+    ioc.run();
+
+    file.close();
+    file.open("/tmp/test.txt", stream_file::write_only);
+
+    auto size = file.write_some(buffer(str.data(), str.size()));
+    std::cout << size << "\n";
+  } catch (std::exception &e) {
+    std::cout << e.what() << "\n";
+  }
+}
+
 int main(int, char **) {
   test_aio();
   test_async_write();
   test_async_read();
+  un_direct();
 }
