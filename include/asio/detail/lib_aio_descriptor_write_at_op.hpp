@@ -53,7 +53,7 @@ public:
   {
   }
 
-  static status do_perform(reactor* base)
+  static status do_perform(reactor_op* base)
   {
     lib_aio_descriptor_write_at_op_base* o(
         static_cast<lib_aio_descriptor_write_at_op_base*>(base));

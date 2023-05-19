@@ -462,7 +462,7 @@ public:
     {
       p.p->cancellation_key_ = 
         &slot.template emplace<lib_aio_op_cancellation>(&reactor_,
-            &reactor_data_, reactor::write_op);
+            &reactor_data_, event_fd_, reactor::write_op);
     }
 
     ASIO_HANDLER_CREATION((reactor_.context(), *p.p,
