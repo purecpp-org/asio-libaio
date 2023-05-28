@@ -3,6 +3,7 @@
 #include <asio/io_context.hpp>
 #include <asio/random_access_file.hpp>
 #include <asio/stream_file.hpp>
+#include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
 #include <libaio.h>
@@ -38,8 +39,7 @@ void test_aio() {
   io_context_t ctx{};
   int r = io_setup(128, &ctx);
 
-  char buf[4096];
-  void *data = buf;
+  void *data;
   int r1 = posix_memalign(&data, 512, 4096);
   if (r1) {
     fprintf(stderr, "posix_memalign failed: %s\n", strerror(r));
@@ -53,14 +53,14 @@ void test_aio() {
 
   ::io_prep_pread(&cb, fd, data, 4096, 0);
 
-  char wbuf[4096] = "test";
-  void *data2 = wbuf;
-  r1 = posix_memalign(&data2, 512, 4096);
+  void *data2;
+  size_t buf_size = 4096;
+  r1 = posix_memalign(&data2, 512, buf_size);
   if (r1) {
     fprintf(stderr, "posix_memalign failed: %s\n", strerror(r));
     return;
   }
-  ::io_prep_pwrite(&cb2, fd, data2, 512, 0);
+  ::io_prep_pwrite(&cb2, fd, data2, buf_size, 0);
 
   r = io_submit(ctx, 2, list_of_iocb);
 
@@ -69,6 +69,9 @@ void test_aio() {
 
   std::cout << events[0].res2 << " " << events[0].res << "\n";
   std::cout << events[1].res2 << " " << events[1].res << "\n";
+
+  free(data);
+  free(data2);
 }
 
 void test_async_read() {
@@ -90,6 +93,7 @@ void test_async_read() {
                            std::cout << str << "\n";
                          });
     ioc.run();
+    free(data);
   } catch (std::exception &e) {
     std::cout << e.what() << "\n";
   }
@@ -101,7 +105,8 @@ void test_async_write() {
     stream_file file(ioc, "/tmp/test.txt",
                      stream_file::write_only | stream_file::direct);
     void *data = nullptr;
-    int r = posix_memalign(&data, 512, 4096);
+    size_t buf_size = 4096;
+    int r = posix_memalign(&data, 512, buf_size);
     if (r) {
       fprintf(stderr, "posix_memalign failed: %s\n", strerror(r));
       return;
@@ -110,13 +115,15 @@ void test_async_write() {
     std::string str = "it is a test";
     strcpy((char *)data, str.data());
 
-    file.async_write_some(buffer(data, 512),
+    file.async_write_some(buffer(data, buf_size),
                           [data](asio::error_code ec, size_t size) {
                             std::cout << ec.message() << " " << size << "\n";
                             std::string_view str((char *)data, size);
                             std::cout << str << "\n";
                           });
+    std::cout << "test\n";
     ioc.run();
+    free(data);
   } catch (std::exception &e) {
     std::cout << e.what() << "\n";
   }
@@ -143,6 +150,7 @@ void un_direct() {
                             std::cout << ec.message() << " " << size << "\n";
                           });
     ioc.run();
+    free(data);
 
     file.close();
     file.open("/tmp/test.txt", stream_file::write_only);
